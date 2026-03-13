@@ -48,7 +48,7 @@
 
 ## 2) 각 에이전트의 사고 과정
 
-![{476961AA-5218-49A9-9D02-5E08E7E00003}.png](attachment:95b03b18-b29f-4124-929b-2f98a7101580:476961AA-5218-49A9-9D02-5E08E7E00003.png)
+![image_1](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/can_ai_agent_agree/image_1.png)
 
 **1. 에이전트의 종류 (동그라미 색상)**
 
@@ -75,7 +75,7 @@
 
 ## 1) 비잔틴 에이전트가 없는 경우
 
-![image.png](attachment:3b86d80f-d9a9-4548-b09e-a12a9fdb4c34:image.png)
+![image_2](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/can_ai_agent_agree/image_2.png)
 
 **1. 위쪽 그래프: 합의에 걸린 시간 (Rounds to Consensus)**
 
@@ -96,7 +96,7 @@
 
 ## 2) 비잔틴 에이전트가 있는 경우
 
-![image.png](attachment:ffc0a86d-5b47-4899-8025-8d0ecd92a91b:image.png)
+![image_3](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/can_ai_agent_agree/image_3.png)
 
 **방해꾼 수에 따른 변화**
 
@@ -111,7 +111,7 @@
 
 ## 3) 변화 과정
 
-![image.png](attachment:710c0145-ba0a-41ec-91ea-043905c5dba1:image.png)
+![image_4](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/can_ai_agent_agree/image_4.png)
 
 에이전트들이 라운드가 진행됨에 따라 어떤 숫자(Value)를 제안하며 마음을 바꿔가는지 그 **'변화 궤적(trajectory)'**을 생생하게 보여주는 그래프입니다. 총 8명의 정직한 에이전트(Qwen3-14B)가 참여한 시뮬레이션 결과입니다.
 

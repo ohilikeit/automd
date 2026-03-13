@@ -2,7 +2,7 @@
 
 ---
 
-![image.png](attachment:8b133ec3-165c-4556-a760-29746c2ea846:image.png)
+![image_1](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/qwen3_tts/image_1.png)
 
 **Qwen3-TTS**는 Qwen 시리즈의 첫 번째 텍스트-음성 변환(TTS) 모델로, 5백만 시간 이상의 음성 데이터로 학습된 **다국어, 제어 가능(Controllable), 고성능 스트리밍** 모델입니다.
 
@@ -34,7 +34,7 @@ LLM과의 원활한 통합과 초저지연을 위해 두 가지 유형의 토크
 - **상용 모델 상회:** MiniMax, ElevenLabs와 같은 상용 모델 대비 10개 언어 모두에서 더 높은 화자 유사도를 보였습니다.
 - **장문 생성:** 10분 이상의 긴 음성도 끊김 없이 자연스럽게 생성할 수 있는 안정성을 확보했습니다.
 
-![image.png](attachment:c2f93fc5-175e-44ba-adb6-09c8f5f8aaa0:image.png)
+![image_2](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/qwen3_tts/image_2.png)
 
 # 2. Qwen-TTS-Tokenizer
 
@@ -52,7 +52,7 @@ LLM과의 원활한 통합과 초저지연을 위해 두 가지 유형의 토크
 
 ## 2.2 Qwen-TTS-Tokenizer-12Hz (초저지연 & 효율성 특화)
 
-![image.png](attachment:34bab084-c902-48df-89ab-a76557d43914:image.png)
+![image_3](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/qwen3_tts/image_3.png)
 
 - **구조 및 특징:** 의미(Semantic)와 음향(Acoustic) 스트림이 공동 최적화된 **12.5Hz 멀티 코드북(Multi-codebook)** 토크나이저입니다.
 - **정보 분리 및 압축 (Disentanglement):**
@@ -68,7 +68,7 @@ LLM과의 원활한 통합과 초저지연을 위해 두 가지 유형의 토크
 
 ## 3.1 아키텍처
 
-![image.png](attachment:c9af8ccb-f74f-4e2b-a7f0-f33dda4c67d6:image.png)
+![image_4](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/qwen3_tts/image_4.png)
 
 Qwen3-TTS는 높은 동시성 처리와 낮은 지연 시간을 위해 **Qwen3 LM**을 백본으로 사용하며, 텍스트와 음성 토큰을 결합한 **이중 트랙(Dual-track)** 방식(동시에 진행)을 채택했습니다.
 
@@ -107,27 +107,27 @@ Qwen3-TTS는 높은 동시성 처리와 낮은 지연 시간을 위해 **Qwen3 L
 
 ## 4.1 토크나이저 성능
 
-![image.png](attachment:edfbcf7a-3b0d-45f5-80ba-c93fe7bf1204:image.png)
+![image_5](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/qwen3_tts/image_5.png)
 
 - **12Hz 토크나이저의 혁신:** Qwen-TTS-Tokenizer-12Hz는 기존의 Mimi나 SpeechTokenizer 등을 제치고 음성 재구성 품질(PESQ, STOI 등)에서 SOTA를 기록했습니다. 이는 극도로 낮은 비트레이트와 효율성을 유지하면서도 최고의 음질을 달성했다는 점에서 의미가 큽니다.
 
 ## 4.2 제로샷 음성 생성
 
-![image.png](attachment:adca1954-4e09-42ac-83b6-62395584fbdc:image.png)
+![image_6](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/qwen3_tts/image_6.png)
 
 - **최고의 정확도:** Seed-TTS 벤치마크에서 **가장 낮은 단어 오류율(WER)**을 기록하며 CosyVoice 3, Seed-TTS 등의 경쟁 모델을 앞섰습니다.
 - **12Hz vs 25Hz:** 흥미롭게도 콘텐츠 정확도(WER) 면에서는 **12Hz 모델이 25Hz 모델보다 더 우수한 성능**을 보였습니다. 이는 12Hz의 낮은 시간 해상도가 장기적인 의존성(Long-term dependencies)을 모델링하는 데 더 유리하기 때문인 것으로 분석됩니다.
 
 ## 4.3 다국어 및 교차 언어 능력
 
-![image.png](attachment:26666790-6103-477e-8793-2dcb29e29887:image.png)
+![image_7](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/qwen3_tts/image_7.png)
 
 - **상용 모델 압도:** MiniMax-Speech, ElevenLabs와 비교했을 때, 10개 언어 **모두에서 더 높은 화자 유사도(Speaker Similarity)**를 기록했습니다. 이는 Qwen3-TTS가 언어가 바뀌어도 화자의 고유한 음색을 가장 잘 유지한다는 것을 의미합니다.
 - **중국어-한국어(Zh-to-Ko) 성능:** 교차 언어 평가에서 특히 중국어를 한국어로 변환할 때, 기존 CosyVoice3 대비 **오류율을 약 66% 감소**시키는 놀라운 성능 향상을 보였습니다.
 
 ## 4.4 제어 가능한 생성
 
-![image.png](attachment:d3b88a1a-b6c3-499b-b1a5-cdd6ff71ee8c:image.png)
+![image_8](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/qwen3_tts/image_8.png)
 
 - 감정을 포함하여 목소리의 나이, 성별, 직업적 톤, 말하는 속도 등을 채팅하듯이 말로 다 바꿀 수 있는 기능
 - **지시 이행 능력:** 목소리를 수정(Editing)하는 작업에서 **GPT-4o-mini-tts보다 뛰어난 성능**을 보였습니다.

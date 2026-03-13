@@ -34,7 +34,7 @@
 
 ---
 
-![image.png](attachment:d04f663d-7bf4-4c1c-8605-5d9da7eccb1a:image.png)
+![image_1](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/conditional_memory_via_scalable_lookup/image_1.png)
 
 ## 2.1 Sparse Retrieval via Hashed N-grams
 
@@ -66,11 +66,11 @@
 
 **가져온 정보가 현재 문맥에 진짜 맞는 정보인지 검증하고 필터링하는 단계.**
 
-![image.png](attachment:989b1cc8-06c1-427f-a16a-29ab55d2b83c:image.png)
+![image_2](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/conditional_memory_via_scalable_lookup/image_2.png)
 
 ### **2.2.1 메커니즘: Hidden State가 '검사관'이 된다**
 
-![image.png](attachment:7fb0b9f5-2113-4f9a-ac99-9a74440d8e90:image.png)
+![image_3](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/conditional_memory_via_scalable_lookup/image_3.png)
 
 Engram은 트랜스포머의 Self-Attention 구조(Query-Key-Value)를 차용하여 이 문제를 우아하게 해결합니다.
 
@@ -108,7 +108,7 @@ Engram은 트랜스포머의 Self-Attention 구조(Query-Key-Value)를 차용하
 
 ### **2.3.2 추론(Inference) 최적화: Prefetching & Overlapping**
 
-![image.png](attachment:67719ca6-dc1a-44ae-ba52-842c63c32f1c:image.png)
+![image_4](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/conditional_memory_via_scalable_lookup/image_4.png)
 
 가장 중요한 **"비동기 프리패칭(Asynchronous Prefetching)"** 전략입니다.
 
@@ -140,7 +140,7 @@ Engram은 트랜스포머의 Self-Attention 구조(Query-Key-Value)를 차용하
 
 **한정된 자원(파라미터 수)을 연산(MoE)과 기억(Engram) 중 어디에 투자해야 가장 효율적인가?**
 
-![image.png](attachment:60cedc7a-ba46-4de1-b0e1-d99ed23e2a35:image.png)
+![image_5](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/conditional_memory_via_scalable_lookup/image_5.png)
 
 ### **3.1 핵심 실험: "계산과 기억의 황금비율을 찾아라"**
 
@@ -166,7 +166,7 @@ Engram은 트랜스포머의 Self-Attention 구조(Query-Key-Value)를 차용하
 
 **이론적으로 도출한 Engram 아키텍처와 할당 비율(Sparsity Allocation)을 실제 수백억 파라미터 규모의 모델에 적용하여 검증**
 
-![image.png](attachment:2e2aff18-7c04-49c4-bcd7-3c47e5498a00:image.png)
+![image_6](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/conditional_memory_via_scalable_lookup/image_6.png)
 
 ### **4.1 실험 라인업: 공정한 비교를 위한 설계 (Fair Comparison)**
 
@@ -191,7 +191,7 @@ Engram은 트랜스포머의 Self-Attention 구조(Query-Key-Value)를 차용하
 
 **Engram이 단순한 지식 저장소가 아니라, 모델의 연산 효율을 높여 실질적으로 모델을 더 깊게(Deeper) 만드는 효과가 있는가?**
 
-![image.png](attachment:6cf94135-43f7-4d40-9d29-71cf6bc9df5d:image.png)
+![image_7](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/conditional_memory_via_scalable_lookup/image_7.png)
 
 ### **1. 가설: "초반 레이어의 노가다를 없애주자"**
 
