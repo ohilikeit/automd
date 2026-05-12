@@ -59,6 +59,56 @@ NLA는 AV + AR 두 학습 모듈로 구성되고, target은 그저 활성화 생
 - **AR 쪽**은 일반 supervised regression (gradient descent).
 - **AV 쪽**은 reward = -reconstruction error로 GRPO 강화학습.
 
+### 모델 셋업 (수식 표기)
+
+세 모델을 다음과 같이 정의합니다.
+
+- **Target model**: 입력 토큰 시퀀스 $x$의 layer $l$, 위치 $t$에서 residual stream 활성화 $h_l \in \mathbb{R}^d$를 생산. 학습 내내 frozen.
+- **Activation Verbalizer**: 활성화에 조건화된 텍스트 정책 $AV_\phi(z \mid h_l)$ — 활성화 $h_l$을 자연어 설명 $z$ (토큰 시퀀스, $|z| < 500$)로 매핑하는 conditional distribution.
+- **Activation Reconstructor**: 결정적 함수 $AR_\theta : z \mapsto \hat{h}_l \in \mathbb{R}^d$ — 설명만 보고 활성화를 복원.
+
+활성화 corpus $\mathcal{H}$는 pretraining 분포와 유사한 텍스트들에서 다양한 layer/position의 $h_l$을 수집해 구성됩니다.
+
+### 학습 목적식 (조금만 수식으로)
+
+초기화된 $AV_\phi$, $AR_\theta$에 대해 활성화 분포 $\mathcal{H}$ 위에서 다음을 최소화합니다:
+
+$$
+\mathcal{L}(\phi, \theta) = \mathbb{E}_{h_l \sim \mathcal{H}} \, \mathbb{E}_{z \sim AV_\phi(\cdot|h_l)} \big[\, \|h_l - AR_\theta(z)\|_2^2 \,\big].
+$$
+
+> 활성화 $h_l$을 뽑고 → AV가 그걸 설명 $z$로 풀고 → AR이 $z$만 보고 $h_l$을 복원. 이 복원오차의 기댓값이 곧 loss.
+
+**AR 업데이트.** $\theta$는 $AR_\theta(z)$를 통해서만 loss에 들어오므로 평범한 MSE regression입니다:
+
+$$
+\nabla_\theta \mathcal{L} = \mathbb{E}_{h_l \sim \mathcal{H}} \, \mathbb{E}_{z \sim AV_\phi(\cdot|h_l)} \big[\, \nabla_\theta \|h_l - AR_\theta(z)\|_2^2 \,\big].
+$$
+
+→ $z$를 input, $h_l$을 target으로 한 step gradient descent.
+
+**AV 업데이트.** $\phi$는 샘플링 분포 $AV_\phi(\cdot|h_l)$을 통해서만 영향을 주므로 미분이 직접 흐르지 않고, 이는 **RL 문제**가 됩니다. 보상은 음의 복원오차:
+
+$$
+r(h_l, z) = -\|h_l - AR_\theta(z)\|_2^2.
+$$
+
+이 reward로 policy $AV_\phi$를 GRPO로 업데이트합니다. 각 $h_l$마다 후보 설명 $z$를 한 그룹 샘플 → 각각에 $r(h_l, z)$를 매겨 GRPO objective 적용.
+
+> AV와 AR 업데이트는 **decouple**되어 있습니다. AR 업데이트는 $\phi$로 backprop되지 않고, AV의 reward는 그 step에서 $AR_\theta$를 고정된 채점기로 간주합니다.
+
+**한 training step 요약 (매 batch 동시 수행):**
+1. 활성화 $h_l$ 배치를 샘플($T=1$), 각 $h_l$에 대해 $z \sim AV_\phi(\cdot|h_l)$ 한 그룹 생성.
+2. AR을 regression loss $\|h_l - AR_\theta(z)\|_2^2$로 한 step 업데이트.
+3. AV를 reward $r(h_l, z)$로 한 step RL 업데이트.
+
+**Reward shaping & 정규화.** 실전에선 step (3)에 두 가지 변형이 들어갑니다:
+
+- **단조 변환된 reward**: $r(h_l, z) = -\log \|h_l - AR_\theta(z)\|_2^2$ — 필수는 아니지만 학습 안정에 도움.
+- **KL penalty** $\beta D_{\mathrm{KL}}(AV_\phi \,\|\, AV_{\phi_{\text{init}}})$ — AV가 초기 분포(자연어 manifold)에서 너무 멀어지지 않게 잡아주는 핵심 장치. 학습 중 설명의 fluency를 보존.
+
+> 경험적으로 **FVE는 $\log(\text{training steps})$에 거의 선형**으로 증가하고, 이 논문에서 평가한 NLA들은 FVE **0.6–0.8** 수준까지 도달합니다. 학습이 진행될수록 설명도 더 informative해진다는 게 정량 평가에서 확인됩니다.
+
 > **왜 round-trip 구조인가?** 활성화가 인코딩하는 "생각"의 정답을 우리가 모르기 때문에, 설명이 좋은지 직접 채점할 수 없습니다. 그래서 *"설명에서 활성화가 잘 복원되면 좋은 설명"* 이라는 간접적 채점 기준을 만든 것. 다른 LLM이 그 설명을 읽고 같은 활성화를 다시 만들 수 있다면, 적어도 활성화 안의 정보가 자연어로 잘 전달됐다는 뜻입니다.
 
 ## 2.2 그런데 왜 "사람이 읽을 수 있는" 설명이 나오는가
