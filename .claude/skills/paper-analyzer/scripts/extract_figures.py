@@ -33,7 +33,7 @@ import fitz  # PyMuPDF
 
 
 CAPTION_PATTERN = re.compile(
-    r"^(?i:(Figure|Fig\.|Table))\s+(\d+)(?:\s*[:.]|\s+[A-Z])",
+    r"^(?i:(Figure|Fig\.|Table))\s+(\d+)(?:\s*[:.|]|\s+[A-Z])",
 )
 
 
