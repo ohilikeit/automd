@@ -4,12 +4,12 @@
 
 ### 1. 배경 및 문제 제기
 
-프런티어 LLM들이 빠르게 발전하면서, 흥미로운 현상이 함께 나타났습니다. **모델마다 잘하는 영역이 점점 갈라지고 있다**는 것입니다.
+프런티어 LLM들이 빠르게 발전하면서, 한 가지 현상이 함께 나타났습니다. **모델마다 잘하는 영역이 점점 갈라지고 있다**는 겁니다.
 
 - 도메인 수준: GPT 계열은 수학·물리 추론, Opus 계열은 소프트웨어 엔지니어링·사이버보안에 강점
 - 도메인 **내부**에서도 갈림: 경쟁 코딩에서 Gemini-3.1-Pro는 알려진 알고리즘을 직접 구현하는 데 능하고, GPT 계열은 여러 알고리즘 아이디어를 조합해 가장 어려운 문제를 푸는 계획 수립에 강함
 
-여기에 더해, 최근 성능 향상은 모델 자체뿐 아니라 **agentic scaffold**(도구 사용, 환경 피드백, 메모리 관리 등으로 모델을 감싸는 구조)에서도 크게 나왔습니다. 즉 "능력"은 모델만의 속성이 아니라 **모델이 작동하는 scaffold의 속성**이기도 합니다.
+여기에 더해, 최근 성능 향상은 모델 자체뿐 아니라 **agentic scaffold**(도구 사용, 환경 피드백, 메모리 관리 등으로 모델을 감싸는 구조)에서도 크게 나왔습니다. 곧 "능력"은 모델만의 속성이 아니라 **모델이 작동하는 scaffold의 속성**이기도 합니다.
 
 > **핵심 질문:** 다음 frontier는 더 큰 단일 모델 하나가 아니라, 여러 모델의 상보적 강점을 *식별·결합·증폭*하는 시스템에서 오는 것 아닐까?
 
@@ -35,7 +35,7 @@
 Figure 1은 Fugu/Fugu-Ultra를 프런티어 모델들과 8개 벤치마크에서 비교한 것입니다. **진한 빨강이 Fugu-Ultra, 밝은 빨강이 Fugu, 회색이 baseline**(각 provider 보고치)입니다.
 
 - 코딩·터미널(Terminal Bench 2.1, LiveCodeBench), 과학 추론(GPQA-D), 차트 이해(CharXiv) 등 대부분에서 **빨강 막대가 회색을 앞서거나 최상위권**입니다.
-- 특히 흥미로운 점은, Fugu의 worker pool에 **포함되지 않은** 비공개 모델(Fable 5, Mythos Preview)까지 일부 벤치마크에서 넘어섰다는 것입니다.
+- 한편 Fugu의 worker pool에 **포함되지 않은** 비공개 모델(Fable 5, Mythos Preview)까지 일부 벤치마크에서 넘어섰습니다.
 - 단, SWEBench Pro에서는 Fable 5(80.0)가 Fugu-Ultra(73.7)보다 높습니다. Fable 5는 agent pool에 없으므로 이는 오케스트레이션이 *모든* 비공개 모델을 능가한다는 뜻은 아닙니다.
 
 > **핵심 메시지:** 모델 오케스트레이션은 "더 큰 모델을 훈련하는 것"과는 **별개의 새로운 scaling 축**이다. 학습 compute를 늘리지 않고도, 기존 프런티어 모델들을 똑똑하게 조합해 세대 업그레이드급 성능에 도달할 수 있다.
@@ -46,7 +46,7 @@ Figure 1은 Fugu/Fugu-Ultra를 프런티어 모델들과 8개 벤치마크에서
 
 Fugu는 응답 속도가 중요한 일상·대화형 워크로드를 겨냥한 변형입니다. 핵심 설계 철학은 **"오케스트레이터는 빠르고 가볍게 결정만 내린다"** 입니다.
 
-> **⚠️ 가장 흔한 오해 먼저:** 아래에 나오는 hidden state·logit·lightweight head는 **closed worker 모델(Opus·Gemini·GPT)의 것이 아닙니다.** 그것들은 API로 호출되는 블랙박스일 뿐, 내부에 접근할 수 없습니다. hidden state/logit을 쓰는 주체는 **Fugu 자신** — 즉 Sakana가 따로 보유한 **별도의 오픈 LLM(orchestrator backbone)**입니다. backbone은 가중치를 가지고 있으니 자기 hidden state에 당연히 접근할 수 있죠. 정리하면 **"오픈 모델(지휘자)이 logit으로 결정 → closed 모델(연주자)이 실제 작업 수행"** 의 2층 구조입니다.
+> **⚠️ 가장 흔한 오해 먼저:** 아래에 나오는 hidden state·logit·lightweight head는 **closed worker 모델(Opus·Gemini·GPT)의 것이 아닙니다.** 그것들은 API로 호출되는 블랙박스일 뿐, 내부에 접근할 수 없습니다. hidden state/logit을 쓰는 주체는 **Fugu 자신** — 바로 Sakana가 따로 보유한 **별도의 오픈 LLM(orchestrator backbone)**입니다. backbone은 가중치를 가지고 있으니 자기 hidden state에 당연히 접근할 수 있죠. 정리하면 **"오픈 모델(지휘자)이 logit으로 결정 → closed 모델(연주자)이 실제 작업 수행"** 의 2층 구조입니다.
 
 ## 2.1 Parametrization: logit으로 결정하는 가벼운 head
 
@@ -59,7 +59,7 @@ Figure 2가 Fugu의 모든 것입니다. 데이터 흐름을 따라가 보겠습
 3. 기존 LM Head와 **병렬로** 작은 **Lightweight Head**가 이 $h$를 받아, 풀에 있는 $L$개 worker 각각에 대한 logit을 출력합니다. (오른쪽 빨간 노드들)
 4. 가장 점수 높은 worker가 선택되어 질의를 통째로 위임받습니다.
 
-여기서 **결정적으로 영리한 부분**이 두 가지입니다.
+여기서 **핵심 설계**가 두 가지입니다.
 
 - **생성 텍스트가 아니라 logit을 쓴다.** 프롬프팅·실행은 선택된 worker가 다 하므로, Fugu는 worker 선택 결정만 내리면 됩니다. → 초반 토큰 위치에서 hidden state 한 번 계산 → head 적용 → 즉시 dispatch. **비싼 autoregressive 디코딩이 통째로 생략**됩니다. (이것이 낮은 지연시간의 핵심)
 - **역할(role)을 할당하지 않는다.** 전신 모델 Trinity는 선택된 모델에 역할까지 부여했지만, Fugu는 항상 "worker"로만 dispatch합니다. → 조정 공간을 *모델 선택* 하나로 좁혀 오버헤드를 최소화.
@@ -82,7 +82,7 @@ $$\mathcal{L}_{\text{SFT}}(\theta) = \frac{1}{|\mathcal{D}|} \sum_{i=1}^{|\mathc
 
 **② End-to-end 태스크 진화 전략.** 단일 스텝 태스크는 깨끗하지만 실제 사용을 반영하지 못합니다. 그래서 Claude Code·Codex·OpenCode 등에서 **실제 멀티턴 trajectory**(저장소 컨텍스트, 반복 편집, 도구 호출, 실행 피드백)를 모아 end-to-end 태스크로 만듭니다.
 
-- 이런 trajectory는 점수만으로는 안 보이는 차이를 드러냅니다. *어떤 모델은 고수준 추론은 강하나 도구 조작·파일 편집·피드백 반응에는 약하고, 어떤 모델은 벤치마크 점수는 평범해도 인터랙티브 harness 안에서 더 견고*합니다.
+- 이런 trajectory를 보면 점수만으로는 안 보이던 차이가 드러납니다. *어떤 모델은 고수준 추론은 강하나 도구 조작·파일 편집·피드백 반응에는 약하고, 어떤 모델은 벤치마크 점수는 평범해도 인터랙티브 harness 안에서 더 견고*합니다.
 - 최적화는 **sep-CMA-ES**(진화 전략)로 terminal reward $R(\tau) \in \{0,1\}$의 기댓값을 직접 최대화합니다. SFT가 이미 파라미터를 좋은 영역에 놓았기 때문에, 진화 탐색은 라우팅 행동을 **미세하게 refine**하는 역할을 합니다.
 
 → **결과적으로 Fugu는 "고립된 답변 품질"이 아니라 "scaffold 안에서 도구·피드백과 함께 얼마나 잘 작동하는가"라는 실전적 worker 능력을 학습합니다.**
@@ -97,7 +97,7 @@ Fugu-Ultra는 가장 복잡한 워크로드에서 **절대 답변 품질**을 �
 
 Conductor는 강화학습으로 학습된 언어 모델이 **자연어로 전체 agentic 워크플로우를 출력**하는 프레임워크입니다. 입력 태스크를 분할하고, 임의의 subtask를 할당하고, 타깃 커뮤니케이션 전략을 정의합니다.
 
-각 워크플로우는 일련의 **step**으로 정의되며, 각 step은 세 가지를 명시합니다.
+각 워크플로우는 일련의 **step**으로 정의되며, 각 step은 다음을 명시합니다.
 
 - 자연어 **subtask** 문자열
 - 그 subtask를 수행할 **worker agent id**
@@ -115,9 +115,9 @@ $$J(\theta) = \mathbb{E}_{q\sim D,\, \{o\}_1^G \sim \pi_\theta(\cdot|q)} \left[ 
 
 ## 3.2 멀티 에이전트 함수 호출과 공유 메모리
 
-멀티 에이전트 환경에서 **함수 호출(function calling)**은 독특한 메모리 문제를 일으킵니다. 단일 에이전트라면 메시지 transcript가 전체 컨텍스트를 담지만, Fugu-Ultra에서는 **아무 에이전트나 아무 때나** 함수를 호출할 수 있습니다. 따라서 시스템은 "어떤 에이전트가 어떤 호출을 했고, 그 에이전트가 워크플로우 어디에 있는지"를 추적해야 합니다.
+멀티 에이전트 환경에서는 **함수 호출(function calling)** 때문에 독특한 메모리 문제가 생깁니다. 단일 에이전트라면 메시지 transcript가 전체 컨텍스트를 담지만, Fugu-Ultra에서는 **아무 에이전트나 아무 때나** 함수를 호출할 수 있습니다. 따라서 시스템은 "어떤 에이전트가 어떤 호출을 했고, 그 에이전트가 워크플로우 어디에 있는지"를 추적해야 합니다.
 
-이를 위해 두 가지 메커니즘이 절묘하게 균형을 이룹니다.
+이를 위해 두 가지 메커니즘이 균형을 이룹니다.
 
 - **Intra-workflow 에이전트 격리.** 같은 워크플로우 안에서는 각 에이전트의 함수 호출 trajectory를 서로 격리합니다. 그렇지 않으면 *첫 에이전트가 전체 경로를 정해버리고 이후 에이전트들이 그 경로를 따라가 중복 기여만 하는* **orchestration collapse**가 발생합니다. 에이전트는 오직 access list를 통해서만 다른 에이전트의 작업을 봅니다.
 - **Persistent shared memory.** 반대로 멀티턴 대화 전체에서 완전히 격리하면, 에이전트들이 같은 도구 호출을 반복해 이미 발견한 결과를 재발견하는 낭비가 생깁니다. 그래서 **이전 워크플로우의 도구 호출은 공유**하도록 inter-workflow 메모리를 허용합니다.
@@ -139,8 +139,8 @@ Fugu의 worker pool에는 Gemini-3.1-Pro, Claude-Opus-4.8, GPT-5.5 같은 SOTA �
 Table 1은 11개 벤치마크 종합 성적표입니다. **굵게가 1등, 밑줄이 2등**이고, 파란 음영 두 열이 Fugu-Ultra와 Fugu입니다.
 
 - Fugu-Ultra는 SWE Bench Pro(73.7), Terminal Bench 2.1(82.1), LiveCodeBench(93.2), HLE(50.0), CharXiv(86.6), GPQA(95.5) 등 **대부분에서 1등**.
-- 더 놀라운 건 **Fugu(단일 worker만 선택하는 빠른 모델)** 역시 SciCode(60.1), τ³ Banking(21.7), Long Context Reasoning(74.7), GPQA(95.5 공동 1등)에서 1등을 차지한다는 점.
-- 즉 두 Fugu 모두, 자신이 호출하는 개별 SOTA 모델(Opus/Gemini/GPT)을 **상회**합니다. 오케스트레이션이 단순 라우팅을 넘어 실제 능력 증폭을 만든다는 증거입니다.
+- **Fugu(단일 worker만 선택하는 빠른 모델)** 역시 SciCode(60.1), τ³ Banking(21.7), Long Context Reasoning(74.7), GPQA(95.5 공동 1등)에서 1등을 차지합니다.
+- 결국 두 Fugu 모두 자신이 호출하는 개별 SOTA 모델(Opus/Gemini/GPT)을 **상회**합니다. 오케스트레이션이 단순 라우팅을 넘어 실제 능력 증폭을 만든다는 증거입니다.
 
 ## 4.2 오케스트레이션은 "세대 업그레이드"와 맞먹는다
 
@@ -200,7 +200,7 @@ Figure 7은 한 페이지 결과입니다. **위: 원본 편지, 가운데: Fugu
 
 - Fugu-Ultra의 빨강 경로는 초록(전문가 traversal)을 **충실히 따라갑니다**.
 - baseline의 경로는 산재한 문자들 사이를 어지럽게 가로질러 정답과 어긋납니다.
-- 핵심 아이디어: Fugu는 모델을 *훈련*하는 게 아니라, **읽기 순서 예측 함수(코드)를 직접 작성**하고 test-time scaling(beam search)으로 개선합니다. 데이터가 없으니 "암묵적 규칙 → 작동하는 알고리즘"으로 번역하는 능력을 시험하는 것입니다.
+- 핵심 아이디어: Fugu는 모델을 *훈련*하는 게 아니라, **읽기 순서 예측 함수(코드)를 직접 작성**하고 test-time scaling(beam search)으로 개선합니다. 데이터가 없으니 "암묵적 규칙 → 작동하는 알고리즘"으로 얼마나 잘 옮기는지를 시험합니다.
 
 ![image_10](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/sakana_fugu/image_10.png)
 
@@ -223,11 +223,11 @@ Figure 8은 각 모델의 CAD view와 단순화 view를 open/closed 상태로 �
 
 ![image_12](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/sakana_fugu/image_12.png)
 
-**Blindfold Chess(Figure 9):** 보드를 ASCII/FEN으로 절대 보여주지 않고, 매 턴 상대의 마지막 수만 좌표 표기로 주며 **머릿속으로만** 전체 국면을 추적하게 합니다. 각 열은 Fugu vs Model A/B/C, 그리고 전문가급 Stockfish 18(~2100 Elo)와의 대국입니다. 위는 개시 국면, 가운데는 최종 체크메이트, 아래는 Fugu 승률 곡선입니다. **Fugu가 네 판 모두 승리**하며, 자체 blunder/실수 없이 상대보다 정확하게(낮은 centipawn loss) 둡니다. Model A전에서는 약간 불리하게 시작해 **역전승**하는 곡선이 인상적입니다.
+**Blindfold Chess(Figure 9):** 보드를 ASCII/FEN으로 절대 보여주지 않고, 매 턴 상대의 마지막 수만 좌표 표기로 주며 **머릿속으로만** 전체 국면을 추적하게 합니다. 각 열은 Fugu vs Model A/B/C, 그리고 전문가급 Stockfish 18(~2100 Elo)와의 대국입니다. 위는 개시 국면, 가운데는 최종 체크메이트, 아래는 Fugu 승률 곡선입니다. **Fugu가 네 판 모두 승리**하며, 자체 blunder/실수 없이 상대보다 정확하게(낮은 centipawn loss) 둡니다. Model A전에서는 약간 불리하게 시작했다가 **역전승**합니다.
 
 ![image_13](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/sakana_fugu/image_13.png)
 
-**Online Sequential Trading(Figure 10):** 미래 정보 없이 주당 한 번 매수/보유/매도와 사이징(25/50/100%)을 결정하는 50주 온라인 트레이딩. $10,000에서 시작해 Fugu-Ultra(파랑)는 **$11,943.22 ± $633.86 (+19.43%)**에 도달, 다른 프런티어 모델들은 모두 +15% 미만에 그칩니다. 노이즈 섞인 시장 신호를 **잘 타이밍 잡힌, 적절히 사이징된 매매**로 번역하는 능력 차이를 보여줍니다.
+**Online Sequential Trading(Figure 10):** 미래 정보 없이 주당 한 번 매수/보유/매도와 사이징(25/50/100%)을 결정하는 50주 온라인 트레이딩. $10,000에서 시작해 Fugu-Ultra(파랑)는 **$11,943.22 ± $633.86 (+19.43%)**에 도달, 다른 프런티어 모델들은 모두 +15% 미만에 그칩니다. 노이즈 섞인 시장 신호를 **잘 타이밍 잡힌, 적절히 사이징된 매매**로 옮기는 데서 능력 차이가 갈립니다.
 
 # 6. 최적 전략과 위상 (정성적 인사이트)
 
@@ -263,7 +263,7 @@ Fugu-Ultra의 가장 큰 강점은 **자연어로 표현 가능한 어떤 조정
 worker(closed)의 것이 아니라 **Fugu 자신의 오픈 backbone**의 것입니다 (2장 상단 경고 참고). worker는 끝까지 블랙박스 API로만 쓰입니다.
 
 **Q3. Fugu-Ultra는 "누가 무엇을 할지"를 어떤 기준으로 정하나요?**
-명시적 규칙이 없습니다. "GPT=수학, Opus=디버깅" 같은 배정을 주입한 게 아니라, **최종 정답을 맞히면 보상**을 주는 GRPO 학습 과정에서 그런 배정이 **emergent하게** 떠오른 것입니다. 즉 "이 subtask를 이 worker에 주면 정답 확률이 높더라"를 정책이 내재화한 결과입니다. (Fugu 쪽은 다릅니다 — 각 모델을 실제로 돌려 측정한 성능 통계를 soft label로 학습합니다. 2.2절 참고)
+명시적 규칙이 없습니다. "GPT=수학, Opus=디버깅" 같은 배정을 주입한 게 아니라, **최종 정답을 맞히면 보상**을 주는 GRPO 학습 과정에서 그런 배정이 **emergent하게** 떠오른 것입니다. 말하자면 "이 subtask를 이 worker에 주면 정답 확률이 높더라"를 정책이 내재화한 결과입니다. (Fugu 쪽은 다릅니다 — 각 모델을 실제로 돌려 측정한 성능 통계를 soft label로 학습합니다. 2.2절 참고)
 
 **Q4. 모델 풀에 새 모델이 추가되거나 기존 모델이 업그레이드되면 다시 학습해야 하나요?**
 사실상 **그렇습니다.** 이 점은 논문이 "composability(갈아끼우기)"를 장점으로 내세우면서도 비용은 두루뭉술하게 넘긴 부분입니다.
