@@ -61,13 +61,13 @@ ACE는 Google Cloud 서비스입니다. 에이전트마다 **하드웨어로 격
 
 Google은 이 원칙을 다섯 계층으로 설계에 넣었습니다.
 
-| 계층 | 내용 |
-|---|---|
-| **Zero-secrets** | 사용자 credential, API key, OAuth refresh token은 microVM의 메모리에도 디스크에도 없습니다. root를 탈취당해도 훔칠 것이 없습니다. VM이 받는 것은 세션 범위의 단기 SPIFFE 인증서뿐입니다. |
-| **네트워크 카드 없음** | 가상 NIC도 기본 gateway도 없습니다. 모든 트래픽은 virtio-vsock이라는 점대점 통로를 거쳐 로컬 proxy, 외부 gateway 순으로 검사받습니다. |
-| **하드웨어 신뢰 기반** | 서명용 개인키는 guest 바깥의 Titanium IPU 등에만 있습니다. 디스크 연결도 IPU가 중재하므로 호스트 OS가 뚫려도 다른 테넌트의 볼륨에 손댈 수 없습니다. |
-| **불변 호스트** | 호스트는 dm-verity로 고정한 read-only 파일시스템으로 돌아가고 로컬 상태를 남기지 않습니다. Titan이 부팅 무결성을 검증한 뒤에야 워크로드가 올라갑니다. |
-| **암호화** | 모든 트래픽은 IPU의 하드웨어 암호화와 mTLS로 보호됩니다. 메모리 스냅샷과 디스크도 암호화되어 있어 복원하려면 별도의 인가 토큰이 필요합니다. |
+| 계층 | 핵심 용어 | 쉬운 설명 |
+|---|---|---|
+| **Zero-secrets** | **credential·API key·OAuth refresh token**: 서비스에 로그인하는 비밀 정보<br>**SPIFFE 인증서**: "나는 몇 번 sandbox"라는 신분만 증명하는 단기 출입증 | sandbox 안에는 훔칠 비밀이 아예 없습니다. 비밀 정보는 microVM의 메모리에도 디스크에도 두지 않으므로 root 권한을 빼앗겨도 털어 갈 것이 없습니다. VM에 있는 출입증으로는 외부 서비스를 열 수 없습니다. |
+| **네트워크 카드 없음** | **NIC**: 인터넷에 연결하는 랜카드<br>**virtio-vsock**: VM과 호스트 사이에만 이어진 전용 통로 (전화기 대신 경비실 인터폰) | VM은 인터넷에 직접 나갈 수 없습니다. 유일한 출구가 vsock이라서 모든 요청은 로컬 proxy와 외부 gateway라는 검문소를 차례로 거쳐야만 밖으로 나갑니다. |
+| **하드웨어 신뢰 기반** | **서명용 개인키**: 신원을 증명하는 진짜 열쇠<br>**Titanium IPU**: VM 바깥에 있는 Google의 보안 칩<br>**테넌트**: 같은 서버를 함께 쓰는 다른 고객 | 진짜 열쇠는 VM이 손댈 수 없는 보안 칩에만 들어 있습니다. 디스크 연결도 이 칩이 관리하므로 서버 OS 자체가 뚫려도 다른 고객의 디스크는 열 수 없습니다. |
+| **불변 호스트** | **read-only**: 수정할 수 없는 읽기 전용 상태<br>**dm-verity**: 파일이 한 글자라도 바뀌면 잡아내는 위변조 검사<br>**Titan**: 부팅 무결성을 확인하는 보안 칩 | 서버는 고칠 수 없는 상태로 돌아가고 아무것도 남기지 않으므로 공격자가 백도어를 심어도 유지되지 않습니다. 부팅할 때마다 원본 그대로인지 확인한 뒤에야 에이전트를 올립니다. |
+| **암호화** | **mTLS**: 양쪽이 서로 신분을 확인하는 암호화 통신<br>**메모리 스냅샷**: 일시정지할 때 저장해 두는 VM 상태 | 오가는 데이터와 저장된 데이터가 모두 암호화돼 있습니다. 파일을 훔쳐 가도 별도의 인가 토큰 없이는 복원할 수 없습니다. |
 
 → 방어의 초점을 **모델이 나쁜 짓을 못 하게 막는 데서 나쁜 짓을 해도 아무 일도 일어나지 않게 하는 쪽으로** 옮겼습니다.
 
@@ -88,7 +88,18 @@ ACE는 요청 주체를 네 개의 identity로 쪼갰습니다.
 - **ID-3. Agent Workload Identity**: microVM이 뜰 때 받는 단기 SPIFFE identity입니다. sandbox 트래픽에 쓰이는 유일한 identity지만 **유출되어도 백엔드 API를 호출할 수 없습니다**. 이 패킷이 어느 sandbox에서 나왔는지 밝히는 용도로만 쓰입니다.
 - **ID-4. Agent Workforce Identity**: 에이전트가 자기 계정을 가진 비서로서 Workspace, OneDrive 같은 자산에 접근할 때 씁니다.
 
-sandbox에서 요청이 나가면 노드의 로컬 proxy가 이를 가로채 하드웨어 attestation을 붙이고 노드 밖 Agent Gateway로 넘깁니다. Gateway는 사용자 위임(ID-2), 에이전트(ID-3), 노드 identity를 함께 검증하고 egress·DLP 정책을 확인한 다음 **요청이 나가는 순간 실제 백엔드 credential을 끼워 넣습니다**(in-flight token swap). 백엔드는 누구를 대신한 어느 에이전트의 요청인지 분명히 확인할 수 있지만 sandbox는 credential을 끝까지 보지 못합니다.
+에이전트가 Drive 문서 하나를 여는 요청이 어떻게 흘러가는지 따라가 보겠습니다.
+
+![image_4](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/agent_compute_engine/image_4.png)
+
+| 단계 | 누가 | 무엇을 |
+|---|---|---|
+| ① | Sandbox | 요청을 보냅니다. 갖고 있는 건 "몇 번 sandbox"라는 출입증(ID-3)뿐입니다. |
+| ② | 로컬 proxy | 요청을 가로채 "이 요청은 진짜 이 서버의 이 sandbox에서 나왔다"는 **하드웨어 증명(attestation)** 을 붙여 노드 밖으로 넘깁니다. |
+| ③ | Agent Gateway | 세 가지를 함께 확인합니다. 사용자가 이 일을 맡겼는지(ID-2), 어느 에이전트인지(ID-3), 어느 서버인지(노드 identity). 이어서 나가도 되는 목적지인지(egress), 민감한 데이터가 새지 않는지(DLP) 정책도 검사합니다. |
+| ④ | Agent Gateway | 검사를 통과하면 **요청이 나가는 순간에 진짜 credential을 끼워 넣습니다**(in-flight token swap). |
+
+결과적으로 백엔드는 "누구를 대신한 어느 에이전트의 요청인지" 정확히 알 수 있습니다. 그러면서도 sandbox는 credential을 한 번도 보지 못합니다.
 
 > 호텔에 비유하면 투숙객(sandbox)은 방 번호만 적힌 임시 출입증(ID-3)을 들고 있습니다. 금고를 열어야 하면 프런트(Gateway)가 출입증과 예약 기록(ID-2)을 확인하고 직원이 마스터키로 대신 열어 줍니다. 출입증을 도둑맞아도 금고는 열리지 않습니다.
 
@@ -104,6 +115,8 @@ Workspace나 사내 VPC, 내부 MCP 서버에 접근할 때도 같은 구조가 
 
 일반 VM에서는 하이퍼바이저가 guest의 상태를 알 수 없습니다. 일을 하고 있는지 빈 루프만 돌며 다음 프롬프트를 기다리는지 구분하지 못합니다. ACE는 sandbox의 명령 런타임과 호스트를 함께 설계했기 때문에 그 차이를 압니다.
 
+![image_5](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/agent_compute_engine/image_5.png)
+
 1. 에이전트가 tool call을 마치고 thinking 단계로 넘어가면,
 2. sandbox가 "실행 중인 작업 없음" 신호를 보내고,
 3. 호스트가 즉시 checkpoint를 저장하고 sandbox를 idle 상태로 전환합니다.
@@ -118,6 +131,8 @@ Workspace나 사내 VPC, 내부 MCP 서버에 접근할 때도 같은 구조가 
 문제의 나머지 절반은 중복입니다. 활성 에이전트들이 같은 데이터를 겹쳐 들고 있습니다. 한 호스트의 에이전트 수백 개가 똑같은 base 이미지, Python 런타임, 브라우저를 각자 메모리에 올려 둡니다.
 
 ACE는 정적인 페이지를 호스트 전체에 **단 한 벌만** 둡니다. 초기화까지 마친 스냅샷 이미지를 **DAX**(Direct Access)로 물리 메모리에 직접 매핑하고 **Copy-on-Write**로 복제합니다. 이렇게 하면 모든 microVM이 OS와 라이브러리가 담긴 같은 물리 RAM 페이지를 함께 씁니다. 새 메모리는 에이전트가 고친 작은 변경분에만 할당됩니다.
+
+![image_6](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/agent_compute_engine/image_6.png)
 
 덕분에 환경을 **한 번 만들어 두고 수천 개로 fork할 수 있습니다**. 코딩 에이전트의 병렬 실험이나 RL rollout에서 매번 환경을 새로 만들 필요가 없습니다. Google DeepMind의 Clement Farabet은 Antigravity 사례를 들며 "코딩 에이전트는 root 권한과 git 워크스페이스를 갖춘 진짜 컴퓨터가 필요하고, 눈 깜짝할 사이에 병렬 실험으로 갈라질 수 있어야 한다"고 말합니다.
 
@@ -154,15 +169,62 @@ Google은 세 수요를 하나의 하드웨어 풀에서 돌립니다. 글로벌
 
 ---
 
-![image_3](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/agent_compute_engine/image_3.png)
+![image_7](https://raw.githubusercontent.com/ohilikeit/automd/master/data/outputs/images/agent_compute_engine/image_7.png)
 
-앞에서 다룬 요소를 한 장에 모은 최종 아키텍처입니다.
+앞에서 다룬 요소를 한 장에 모은 최종 아키텍처입니다. 그림은 크게 세 구역으로 나뉩니다. **왼쪽은 고객이 관리하고, 가운데는 Google이 운영하며, 오른쪽은 트래픽이 최종적으로 나가는 곳**입니다.
 
-- **왼쪽**(고객 영역): 고객의 harness 또는 RL orchestrator가 client library로 ACE를 부릅니다. 생성·삭제 같은 **control plane** 호출과, 명령·파일·출력을 주고받는 **data plane**(gRPC) 호출이 나뉘어 있습니다. 이미지, identity, egress 정책, lifecycle은 고객이 정합니다.
-- **가운데**(Google 운영): Control plane의 Scheduler가 microVM을 멀티 리전 bare-metal 호스트 풀에 배치하고, Cloud Hypervisor가 각 VM을 격리합니다. 실행 중인 **Active** VM과 idle 감지로 멈춘 **Paused** VM이 나란히 있습니다. 명령은 네트워크가 아닌 VSOCK으로 들어갑니다. 나가는 트래픽은 모두 Egress proxy를 지납니다. 아래의 Storage(image cache, snapshot, Hyperdisk)는 snapshot·restore·pause로 호스트와 연결됩니다.
-- **오른쪽**: Gateway가 egress 정책을 확인하고 credential을 주입한 뒤에야 트래픽이 인터넷, Google Cloud API, 고객 VPC로 나갑니다. 그림에 적힌 대로 credential은 microVM 바깥에 있어서 에이전트 코드가 읽을 수 없습니다.
+### 왼쪽: 고객 영역 (주문하는 쪽)
 
-모델의 실수는 Gateway와 credential 격리가, 기다리는 시간은 Active/Paused 전환과 스냅샷이, 기억은 계층형 스토리지가 맡습니다. 앞서 말한 세 문제의 해법이 이 그림 한 장에 모두 들어 있습니다. ACE는 수개월 안에 Google Cloud에서 preview로 공개될 예정입니다.
+- 고객의 **Agent harness**(에이전트의 두뇌)나 **RL orchestrator**(강화학습 실험을 돌리는 관리 프로그램)가 출발점입니다.
+- 이들은 **ACE client library**를 통해 ACE를 부르는데, 부르는 방식은 두 가지로 나뉩니다.
+  - **Control plane 호출**: "VM 하나 만들어 줘", "이제 지워 줘"처럼 VM 자체를 **관리**하는 요청
+  - **Data plane 호출**(gRPC): "이 명령 실행해", "이 파일 읽어 와"처럼 VM 안에서 **일을 시키는** 요청
+- 어떤 이미지(OS·도구 묶음)를 쓸지, 어떤 identity를 줄지, 어디까지 나갈 수 있게 할지(egress 정책), 언제 만들고 지울지(lifecycle)는 **고객이 정합니다**.
+- 실행 로그와 지표는 다시 고객 쪽으로 돌아옵니다.
+
+### 가운데: Agent Compute Engine (Google이 운영하는 쪽)
+
+**① Control plane (관리 영역)**
+- **Lifecycle API**가 VM 생성·정지·삭제 요청을 받습니다.
+- **Scheduler**가 새 microVM을 어느 서버에 올릴지 정합니다(7장의 글로벌 스케줄링).
+- **Policy & identity**는 정책과 신원을, **Metering**은 사용량을 관리합니다.
+
+**② 공유 호스트 풀 (실제로 일하는 곳)**
+- 여러 리전에 걸친 bare-metal 서버(가상화하지 않은 실제 물리 서버)를 모든 고객이 함께 씁니다.
+- **Cloud Hypervisor**가 microVM 하나하나를 독립된 집처럼 격리합니다.
+- 일하는 중인 **Active** VM과, 할 일이 없어서 멈춰 둔 **Paused** VM이 함께 있습니다(5장의 idle 감지).
+- 명령은 네트워크가 아니라 **Command channel**(VSOCK, 경비실 인터폰)로 VM 안에 들어갑니다.
+- VM에서 밖으로 나가는 트래픽은 예외 없이 **Egress proxy**를 거칩니다.
+
+**③ Storage (저장소)**
+- **Image cache**: 모든 VM이 같이 쓰는 base 이미지
+- **Snapshots**: 멈춘 VM의 상태를 저장한 것. 다시 깨울 때 여기서 복원합니다.
+- **Hyperdisk**: 사용자 워크스페이스처럼 오래 남겨야 하는 데이터(6장)
+
+### 오른쪽: 나가는 곳
+
+- Egress proxy를 지난 트래픽은 **Gateway**에서 한 번 더 검사받습니다. 나가도 되는 목적지인지 확인한 뒤 그 자리에서 credential을 끼워 넣습니다.
+- 그런 다음에야 인터넷, Google Cloud API, 고객 VPC로 나갑니다.
+- credential은 처음부터 끝까지 **microVM 바깥에만** 있으므로 에이전트 코드는 이를 읽을 수 없습니다.
+
+### 요청 하나를 따라가 보면
+
+1. 고객의 harness가 Control plane에 "VM 하나 만들어 줘"라고 요청합니다.
+2. Scheduler가 적당한 서버를 골라 microVM을 띄웁니다.
+3. harness가 Data plane으로 "이 코드 실행해"라고 보내면, 명령이 VSOCK을 타고 VM 안으로 들어갑니다.
+4. 코드가 외부 API를 부르면 요청은 Egress proxy → Gateway를 거치고, Gateway가 credential을 붙여 내보냅니다.
+5. 실행이 끝나고 에이전트가 thinking에 들어가면 VM은 스냅샷으로 저장된 뒤 Paused 상태가 됩니다.
+6. 다음 명령이 오면 스냅샷에서 복원해 바로 다시 일합니다.
+
+### 처음 던진 세 질문의 답
+
+| 문제 | 그림에서 담당하는 부분 |
+|---|---|
+| 모델은 실수한다 | Egress proxy와 Gateway, 그리고 microVM 밖에만 있는 credential |
+| 에이전트는 대부분 기다린다 | Active/Paused 전환과 Snapshots |
+| 에이전트는 기억할수록 유용하다 | 계층형 Storage (Image cache · Snapshots · Hyperdisk) |
+
+ACE는 수개월 안에 Google Cloud에서 preview로 공개될 예정입니다.
 
 > **핵심 Takeaway**
 > 1. 에이전트용 컴퓨트 단위는 VM도 container도 아닌, **VM의 격리와 container의 속도에 워크로드 인지까지 갖춘 microVM**입니다.
