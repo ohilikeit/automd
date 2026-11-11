@@ -267,3 +267,74 @@ LAB task의 wiki에 dreaming을 한 번 더 돌린 전후입니다.
 | **Transcript search를 기본으로 삼을 것인가** | Representation + search 조합이 효과적일 때가 있지만 representation에 오류나 hallucination이 쌓이지 않게 유지하는 데도 compute가 필요 |
 
 Claude의 salience 판단은 좋아졌지만 **어떤 모델도 다음 턴에 무슨 일이 일어날지는 알 수 없습니다.** Dreaming은 뒤돌아볼 기회를 주고 그 시간에 메모리를 고치고 다음 세션이 꺼내 쓰기 쉬운 형태로 만들어 둡니다.
+
+# 7. 직접 써보기: Dreams API와 Cookbook
+
+---
+
+원문이 링크한 두 문서가 dreaming을 실제로 돌리는 방법입니다. 하나는 API 한 번으로 끝나는 완제품이고 다른 하나는 직접 조립하는 레시피입니다.
+
+| | [Dreams API](https://platform.claude.com/docs/en/managed-agents/dreams) | [Cookbook (dynamic workflow)](https://platform.claude.com/cookbook/managed-agents-cma-dreaming-with-a-dynamic-workflow) |
+|---|---|---|
+| 형태 | API 호출 하나 | 노트북으로 직접 구성 |
+| 파이프라인 | 고정, `instructions`로만 조정 | 프롬프트·모델·단계를 전부 직접 정함 |
+| 출력 | **새 store** (입력 보존) | 기존 store를 **제자리에서 갱신** |
+| 입력 | memory store + 세션 1~100개 | transcript 파일 (최대 500개) |
+| 적합한 경우 | 결과를 검토한 뒤 반영 | 매일 밤 자동 갱신, 비용·동작 제어 |
+
+## 7.1 Dreams API (research preview)
+
+세션마다 조금씩 쓴 memory store에는 중복, 모순, 낡은 항목이 쌓입니다. dream은 기존 store와 과거 transcript를 함께 읽고 **정리된 새 store**를 만드는 비동기 작업입니다. 입력 store는 건드리지 않으므로 결과가 마음에 들지 않으면 버리면 됩니다.
+
+```python
+# 1. dream 생성 — 기존 store + 과거 세션을 넘긴다
+dream = client.beta.dreams.create(
+    inputs=[
+        {"type": "memory_store", "memory_store_id": store_id},
+        {"type": "sessions", "session_ids": [session_a, session_b]},
+    ],
+    model="claude-opus-5-5",
+    instructions="Focus on coding-style preferences; ignore one-off debugging notes.",
+)
+
+# 2. 끝날 때까지 polling (몇 분 ~ 몇 시간)
+while dream.status in ("pending", "running"):
+    time.sleep(10)
+    dream = client.beta.dreams.retrieve(dream.id)
+
+# 3. 출력 store를 다음 세션에 붙인다
+output_store_id = next(o.memory_store_id for o in dream.outputs if o.type == "memory_store")
+session = client.beta.sessions.create(
+    agent=agent_id,
+    environment_id=environment_id,
+    resources=[{"type": "memory_store", "memory_store_id": output_store_id}],
+)
+```
+
+- **`instructions`는 방향만 잡습니다.** "코딩 스타일 선호에 집중" 같은 상위 지침은 반영되지만 "X 문장을 Y로 바꿔라" 같은 줄 단위 지시는 대개 무시됩니다. 2.3의 교훈(용도만 알려주고 방법은 정하지 않는다)과 같은 설계입니다.
+- `session_id`가 파이프라인을 돌리는 세션을 가리키므로 dream이 무엇을 읽고 쓰는지 실시간으로 볼 수 있습니다.
+- 과금은 선택한 모델의 표준 토큰 요금이고 입력 세션의 수와 길이에 거의 비례합니다. 작은 배치로 시작하라고 권합니다.
+- 접근 신청과 beta 헤더 `dreaming-2026-04-21`이 필요하고 Zero data retention·HIPAA는 지원하지 않습니다.
+
+## 7.2 Cookbook: dynamic workflow로 직접 만들기
+
+같은 아이디어를 Managed Agents의 dynamic workflow로 조립합니다([노트북](https://github.com/anthropics/claude-cookbooks/blob/main/managed_agents/CMA_dreaming_with_a_dynamic_workflow.ipynb)). 원하는 작업을 메시지 한 통으로 설명하면 lead 에이전트가 workflow를 작성해 실행합니다.
+
+| 에이전트 | 기본 모델 | 역할 |
+|---|---|---|
+| lead (`memory-distiller`) | Sonnet 5.5 | workflow를 작성·실행하고 보고. transcript는 직접 읽지 않음 |
+| analyzer (`transcript-analyzer`) | Haiku 5.5 | transcript 하나를 통째로 읽고 기존 메모리를 검증·보강, `_index.md` 갱신 |
+| organizer (`memory-organizer`) | Haiku 5.5 | analyzer가 모두 끝난 뒤 한 번 실행. 중복 병합, 링크 수정, index 완성 |
+
+lead가 analyzer 하나에게 실제로 써 준 작업 지시입니다.
+
+> Please read the transcript at `/mnt/session/uploads/transcripts/08-new-station.txt` and add the durable, verified facts it shows to the long-term memory directory at `/mnt/memory/distilled-memory-YYYYMMDD-HHMMSS`. Other analyzers are working on other transcripts into the same directory at the same time, so check what is already there before writing and add to or update existing files rather than overwrite them.
+
+예제 데이터는 가상의 Python 프로젝트 `tidewick`의 세션 10개와 팀 채팅 노트 1개입니다. 본문에서 본 문제들을 일부러 심어 두었습니다.
+
+- **사실이 낡습니다.** 초기 세션에서는 `make test`가 `TIDEWICK_DATA_DIR`을 설정해야만 통과하는데 이후 릴리스에서 그 조건이 사라집니다. 초기 사실은 복사하지 말고 날짜를 달아 대체해야 합니다 (3장의 틀린 노트 고치기).
+- **주제가 겹칩니다.** analyzer들이 같은 디렉토리에 동시에 쓰므로 덮어쓰지 않고 추가·갱신하도록 지시합니다 (5.2의 병렬 writer 충돌).
+
+비용은 예제 transcript 11개(283 KB)에 **$0.36, 약 2분 30초**였고 긴 transcript 50개(약 12 MB)는 약 $8, 10분입니다.
+
+> 💡 **transcript는 지시가 아니라 데이터로 취급합니다.** tool result 안에 "ignore your instructions"가 들어 있을 수 있기 때문입니다. analyzer에는 파일 도구 5개(read, write, edit, glob, grep)만 주고 shell·웹·네트워크는 막으며, store를 read-write로 mount하는 곳은 dreaming 세션 하나뿐입니다.
